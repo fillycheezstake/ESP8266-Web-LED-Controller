@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+  <meta name='viewport' content='width=device-width' />
+
+  <title>Bar LED Control</title>
+	
+  
+  <script src="/bar/iro.js"></script>
+	
+  <style>
+  * {
+    font-family:sans-serif;
+    text-align:center;
+  }
+
+  html, body {
+    width:auto;
+    background-color:#202020;
+  }
+  
+  h1 {
+    width:100%;
+    margin:10px 0px 5px;
+    color:#454545;
+    text-align:center;
+  }
+  
+  #color-picker-container {
+    width:auto;
+    display:inline-block;
+    margin: 5px;
+  }
+  
+  #controls {
+    width: 100%;
+    display:inline-block;
+  }
+
+  ul {
+    text-align:center;
+    padding-inline-start: 0px;
+    margin-block-start: 5px;
+    margin-block-end: 5px;
+  }
+
+  ul#brightness li, ul#speed li, ul#auto li {
+    display:inline-block; 
+    vertical-align: middle;
+  }
+
+  .a {
+    width: 75px;
+    min-height: 21px;
+  }
+
+  .status {
+    color:aqua;
+    min-width: 50px;
+  }
+  
+  ul li a {
+    display:block;
+    margin:5px;
+    padding:10px 15px;
+    border:3px solid #454545;
+    border-radius:5px;
+    color:#454545;
+    font-weight:bold;
+    text-decoration:none;
+  }
+
+  ul li a:active {
+    border:3px solid #909090;
+    color:#909090;
+  }
+
+  .select-css {
+    display: block;
+    font-size: 16px;
+    font-family: sans-serif;
+    font-weight: 700;
+    color: #454545;
+    line-height: 1.3;
+    padding: .6em 1.4em .5em .8em;
+    width: 280px;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 15px auto;
+    border: 3px solid #909090;
+    border-radius: 5px;
+    background-color: #202020;
+  }
+  .select-css::-ms-expand {
+    display: none;
+  }
+  .select-css:hover {
+    border-color: #909090;
+  }
+  .select-css:focus {
+    border-color: #909090;
+    color: #909090;
+    outline: none;
+  }
+  .select-css option {
+    font-weight:normal;
+  }
+
+  </style>
+</head>
+
+<body>
+  
+  <h1>Bar LED Control</h1>
+  
+  <div id='controls'>
+    <ul id='auto'>
+      <li><a href='#' class='a' id='SetOff'>Off</a></li>
+      <li id='liState' class='status'>On or off</li>
+      <li><a href='#' class='a' id='SetOn'>On</a></li>
+    </ul>
+    
+    <ul id='brightness'>
+      <li><a href='#' class='a' id='b-'>&#9788;</a></li>
+      <li id='liBright' class='status'>Brig</li>
+      <li><a href='#' class='a' id='b+'>&#9728;</a></li>
+    </ul>
+
+    <ul id='speed'>
+      <li><a href='#' class='a' id='s-'>&#8722;</a></li>
+      <li id='liSpeed' class='status'>test</li>
+      <li><a href='#' class='a' id='s+'>&#43;</a></li>
+    </ul>
+  </div>
+
+  <div id="color-picker-container"></div>
+
+  <div id="mode-picker" ><select id="modeSelect" onchange="setMode()" class="select-css"></select></div>
+
+</body>
+
+
+  <script type='text/javascript'>
+  
+    var baseHost = window.location.hostname;
+    var baseEndpoint = 'https://' + baseHost + '/bar';
+    
+    var apiKey = prompt("Enter the API key, please.");
+    var apiKeyArg = "&API_KEY=" + apiKey; 
+    
+    var getJSON = function(url, callback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'json';
+      xhr.onload = function() {
+        var status = xhr.status;
+        if (status === 200) {
+          callback(null, xhr.response);
+        } else {
+          callback(status, xhr.response);
+        }
+      };
+      xhr.send();
+    };
+
+
+    getJSON(baseEndpoint + "/modes", 
+    function(err, data) {
+      if (err !== null) {
+        console.log('Something went wrong: ' + err);
+      } 
+      else {
+        console.log('Number of Modes detected: ' + data.modeCount);
+        console.log('Mode list: ' + data.Modes)
+
+        var x = document.getElementById("modeSelect");
+        
+        var i;
+        for (i = 0; i < data.modeCount; i++) {
+          var option = document.createElement("option");
+          option.text = data.Modes[i];
+          x.add(option);
+        }
+      }
+    });
+
+    
+    function getStatus() {
+      getJSON(baseEndpoint + "/status", 
+      function(err, data) {
+        if (err !== null) {
+          console.log('Something went wrong: ' + err);
+        } 
+        else {
+
+          colorPicker.color.hexString = data.currentColor.toString(16);
+          document.getElementById("liBright").innerHTML = Math.round(data.currentBrightness / 255 * 100) + "%";
+          document.getElementById("liSpeed").innerHTML = Math.round( (1-((data.currentSpeed - 2) / 65535)) * 100) + "%";
+          
+          if (data.currentState) {
+            document.getElementById("liState").innerHTML = "On"
+          }
+          else {
+            document.getElementById("liState").innerHTML = "Off"
+          }
+        }
+      });
+    }
+
+
+    function setMode() {
+        var x = document.getElementById("modeSelect");
+
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('GET', baseEndpoint + '/set?' + 'm' + '=' + x.selectedIndex + apiKeyArg, true);
+        xhttp.send();
+        console.log('Mode set to: ' + x.value + " Index Number: " + x.selectedIndex); 
+    }
+
+    var colorPicker = new iro.ColorPicker("#color-picker-container", {
+      // Set the size of the color picker
+      width: 320,
+    });
+
+    colorPicker.on('input:end', onColorChange);
+    
+    function onColorChange(color, changes) {     
+      var tmp = color.hexString;
+      tmp = tmp.slice(1);
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 'c' + '=' + tmp + apiKeyArg, true);
+      xhttp.send();
+      
+      console.log(color.hexString);
+      getStatus();
+    }
+
+
+    getStatus();
+    
+    
+    document.getElementById('b-').onclick = function(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 'b' + '=' + '-' + apiKeyArg, true);
+      xhttp.send();
+      console.log('Brightness down'); 
+      getStatus();  
+    };
+    
+    document.getElementById('b+').onclick = function(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 'b' + '=' + '+' + apiKeyArg, true);
+      xhttp.send();
+      console.log('Brightness up'); 
+      getStatus();  
+    };
+    
+    document.getElementById('s-').onclick = function(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 's' + '=' + '-' + apiKeyArg, true);
+      xhttp.send();
+      console.log('Speed down');  
+      getStatus(); 
+    };
+    
+    document.getElementById('s+').onclick = function(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 's' + '=' + '+' + apiKeyArg, true);
+      xhttp.send();
+      console.log('Speed up');   
+      getStatus();
+    };
+
+    document.getElementById('SetOn').onclick = function(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 'p' + '=' + '1' + apiKeyArg, true);
+      xhttp.send();
+      console.log('Set On');   
+      getStatus();
+    };
+    
+    document.getElementById('SetOff').onclick = function(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.open('GET', baseEndpoint + '/set?' + 'p' + '=' + '0' + apiKeyArg, true);
+      xhttp.send();
+      console.log('Set Off');
+      getStatus();   
+    };
+
+ 
+    
+
+  
+
+  </script>
+</html>
